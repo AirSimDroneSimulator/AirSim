@@ -82,23 +82,29 @@ class History:
 	def reset(self):
         self._buffer.fill(0)
 
+def loss_function(y, y_hat):
+		pass
+		
 class DQN_agent:
 	# Deep Q network agent
 	def __init__(self, input_shape, action_num, learning_rate=0.00025, gamma=0.99, epsilon=0.1,
-				 minibatch_size = 32, memory_size=50000, target_update_interval=1000, sess):
+				 minibatch_size = 32, memory_size=50000, target_update_interval=1000, train_interval=4, sess):
 		self.input_shape = input_shape
 		self.action_num = action_num
 		self.gamma = gamma
 		self.minibatch_size = minibatch_size
 		self.epsilon = epsilon
+		self.train_interval = train_interval
 		self.sess = sess
 		
 		self.replay_memory = ReplayMemory(memory_size, input_shape[1:])
+		self.history = History(input_shape)
 		self.num_action_taken = 0
 		
 		self.X = tf.placeholder(tf.float32, [None] + input_shape)
-		self.Q_network = build_network("Q_Network", self.X)
+		self.Q_network = build_network("Q_network", self.X)
 		self.target_network = build_network("target_network", self.X)
+		self.optimizer = tf.train.AdamOptimizer()
 		
 	def build_network(self, scope_name, X):
 		with tf.variable_scope(scope_name):
@@ -110,7 +116,7 @@ class DQN_agent:
 			fc2 = tf.layers.dense(inputs=fc1, units=self.action_num)
 		return fc2
 	
-	def update_target_net(self, dest_scope, src_scope):
+	def update_target_net(self, dest_scope="target_network", src_scope="Q_network"):
 		# return tf operations that copy weights to target network
 		ops = []
 		src_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=src_scope)
@@ -121,14 +127,43 @@ class DQN_agent:
 		
 		return ops
 	
-	def act(self):
-		pass
+	def act(self, state):
+		# select action follow epsilon greedy
+		self.history.append(state)
+		rand = np.random.random()
+		
+		if rand > self.epsilon:
+			env_history = self.history.get()
+			env_history = tf.reshape(env_history, [1]+self.input_shape)
+			Q_values = self.sess.run(self.Q_network, feed_dict={self.X : env_history})
+			action = tf.argmax(Q_values)
+		else:
+			action = np.random.randint(low=0, high=self.action_num)
+		self.num_action_taken += 1
+		return action
 	
-	def observe(self):
-		pass
+	def observe(self, old_state, action, reward, terminal):
+		# observe environment after choosing action by act()
+		# old_state : old state before taking the action
+		# action : action selected by policy
+		# reward : reward for applying action on old state
+		# terminal : whether the action terminates an episode
+		if terminal:
+			self.history.reset()
+		self.replay_memory.append(old_state, action, reward, terminal)
 	
 	def train(self):
-		pass
+		# terminal case is not finished!!
+		if (self.num_action_taken % self.train_interval) == 0:
+			pre_states, actions, post_states, rewards, terminals = self.replay_memory.minibatch(self.minibatch_size)
+			Q_target = self.sess.run(rewards + self.gamma * tf.reduce_max(self.target_network, axis=0),
+									feed_dict={self.X : post_states}
+			# actions is one-hot encoding
+			# not done yet
+			Q_act = tf.reduce_sum(self.Q_Network * actions, axis=0)
+			loss = loss_function(Q_target, Q_act)
+			train_step = self.optimizer.minimize(loss)
+			sess.run(train_step)
 
 def transform_input(responses):
 	# return a numpy array representation of image
@@ -158,5 +193,5 @@ def interpret_action(action):
         quad_offset = (0, 0, -scaling_factor)
     return quad_offset
 	
-def compute_reward():
+def compute_reward(drone_state, dest):
 	pass
