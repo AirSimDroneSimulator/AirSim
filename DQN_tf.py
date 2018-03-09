@@ -87,8 +87,8 @@ def loss_function(y, y_hat):
 		
 class DQN_agent:
 	# Deep Q network agent
-	def __init__(self, input_shape, action_num, learning_rate=0.00025, gamma=0.99, epsilon=0.1,
-				 minibatch_size = 32, memory_size=50000, target_update_interval=1000, train_interval=4, sess):
+	def __init__(self, input_shape, action_num, sess, learning_rate=0.00025, gamma=0.99, epsilon=0.1,
+				 minibatch_size = 32, memory_size=50000, target_update_interval=1000, train_interval=4):
 		self.input_shape = input_shape
 		self.action_num = action_num
 		self.gamma = gamma
@@ -104,7 +104,7 @@ class DQN_agent:
 		self.X = tf.placeholder(tf.float32, [None] + input_shape)
 		self.Q_network = build_network("Q_network", self.X)
 		self.target_network = build_network("target_network", self.X)
-		self.optimizer = tf.train.AdamOptimizer()
+		self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 		
 	def build_network(self, scope_name, X):
 		with tf.variable_scope(scope_name):
@@ -153,13 +153,16 @@ class DQN_agent:
 		self.replay_memory.append(old_state, action, reward, terminal)
 	
 	def train(self):
-		# terminal case is not finished!!
+		# update target net every __ interval
+		if (self.num_action_taken % self.target_update_interval == 0):
+			self.sess.run(update_target_net())
+		
 		if (self.num_action_taken % self.train_interval) == 0:
 			pre_states, actions, post_states, rewards, terminals = self.replay_memory.minibatch(self.minibatch_size)
-			Q_target = self.sess.run(rewards + self.gamma * tf.reduce_max(self.target_network, axis=0),
+			Q_target = self.sess.run(rewards + self.gamma * tf.reduce_max(self.target_network, axis=0) * np.invert(terminals),
 									feed_dict={self.X : post_states}
 			# actions is one-hot encoding
-			# not done yet
+			actions = tf.one_hot(actions, self.num_action_taken)
 			Q_act = tf.reduce_sum(self.Q_Network * actions, axis=0)
 			loss = loss_function(Q_target, Q_act)
 			train_step = self.optimizer.minimize(loss)
@@ -195,3 +198,49 @@ def interpret_action(action):
 	
 def compute_reward(drone_state, dest):
 	pass
+	
+def is_terminal(reward):
+	pass
+	
+if __name__ == "__main__":
+	# connect to the AirSim simulator 
+	client = MultirotorClient()
+	client.confirmConnection()
+	client.enableApiControl(True)
+	client.armDisarm(True)
+	
+	client.takeoff()
+	
+	with tf.device("/gpu:0"):
+		input_shape = (4, 84, 84)
+		action_num = 7
+		epoch, max_epoch = 0, 100
+		sess = tf.Session()
+		agent = DQN_agent(input_shape, action_num, sess)
+		
+		responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
+		current_state = transform_input(responses)
+		
+		while epoch < max_epoch:
+			action = agent.act(current_state)
+			quad_offset = interpret_action(action)
+			quad_vel = client.getVelocity()
+			client.moveByVelocity(quad_vel.x_val+quad_offset[0], quad_vel.y_val+quad_offset[1], quad_vel.z_val+quad_offset[2], 5)
+			time.sleep(0.5)
+			
+			quad_state = client.getPosition()
+			quad_vel = client.getVelocity()
+			collision_info = client.getCollisionInfo()
+			reward = compute_reward(quad_state, quad_vel, collision_info)
+			terminal = is_terminal(reward)
+			
+			agent.observe(current_state, action, reward, terminal)
+			agent.train()
+			
+			if terminal:
+				client.reset()
+				client.takeoff()
+				epoch += 1
+				
+			responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
+			current_state = transform_input(responses)
