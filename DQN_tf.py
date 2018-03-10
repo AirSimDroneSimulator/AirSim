@@ -12,7 +12,7 @@ class ReplayMemory:
 		self._memory_size = size
 		self._dim = shape
 		self._history_length = history_length
-		self._states = np.zeros((size,) + sample_shape, dtype=np.float32)
+		self._states = np.zeros((size,) + shape, dtype=np.float32)
 		self._actions = np.zeros(size, dtype=np.uint8)
 		self._rewards = np.zeros(size, dtype=np.float32)
 		self._terminals = np.zeros(size, dtype=np.float32)
@@ -21,7 +21,7 @@ class ReplayMemory:
 		return self._count
 	
 	def append(self, state, action, reward, terminal):
-		assert state.shape = self._dim
+		assert state.shape == self._dim
 		self._states[self._pos] = state
 		self._actions[self._pos] = action
 		self._rewards[self._pos] = reward
@@ -60,6 +60,7 @@ class ReplayMemory:
 		if self._count == 0:
 			raise("Empty memory!")
 		index %= self._count
+		history_length = self._history_length
 		if index >= history_length:
 			return self._states[(index - (history_length - 1)):index + 1, ...]
 		else:
@@ -73,21 +74,23 @@ class History:
 	
 	def append(self, state):
         # Append state to the history
-        self._buffer[:-1] = self._buffer[1:]
-        self._buffer[-1] = state
+		self._buffer[:-1] = self._buffer[1:]
+		self._buffer[-1] = state
 		
 	def get(self):
 		return self._buffer
 	
 	def reset(self):
-        self._buffer.fill(0)
+		self._buffer.fill(0)
 
 def loss_function(y, y_hat):
-		pass
+		L = tf.reduce_sum((y - y_hat) ** 2)
+		return L
 		
 class DQN_agent:
 	# Deep Q network agent
-	def __init__(self, input_shape, action_num, sess, learning_rate=0.00025, gamma=0.99, epsilon=0.1,
+	def __init__(self, input_shape, action_num, sess, 
+				 learning_rate=0.00025, gamma=0.99, epsilon=0.1, train_after=50,
 				 minibatch_size = 32, memory_size=50000, target_update_interval=1000, train_interval=4):
 		self.input_shape = input_shape
 		self.action_num = action_num
@@ -95,24 +98,28 @@ class DQN_agent:
 		self.minibatch_size = minibatch_size
 		self.epsilon = epsilon
 		self.train_interval = train_interval
+		self.train_after = train_after
 		self.sess = sess
+		self.target_update_interval = target_update_interval
 		
 		self.replay_memory = ReplayMemory(memory_size, input_shape[1:])
 		self.history = History(input_shape)
 		self.num_action_taken = 0
+		self.training = False
 		
-		self.X = tf.placeholder(tf.float32, [None] + input_shape)
-		self.Q_network = build_network("Q_network", self.X)
-		self.target_network = build_network("target_network", self.X)
+		self.X = tf.placeholder(tf.float32, [None] + list(input_shape))
+		self.Q_network = self.build_network("Q_network", self.X)
+		self.target_network = self.build_network("target_network", self.X)
 		self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 		
 	def build_network(self, scope_name, X):
 		with tf.variable_scope(scope_name):
 		
-			conv1 = tf.layers.conv2d(inputs=X, filters=16, kernel_size=[8,8], strides=[1,4,4,1], padding='same', activation=tf.nn.relu)
-			conv2 = tf.layers.conv2d(inputs=conv1, filters=32, kernel_size=[4,4], strides=[1,2,2,1], padding='same', activation=tf.nn.relu)
-			conv3 = tf.layers.conv2d(inputs=conv2, filters=32, kernel_size=[3,3], strides=[1,1,1,1], padding='same', activation=tf.nn.relu)
-			fc1 = tf.layers.dense(inputs=conv3, units=256, activation=tf.nn.relu)
+			conv1 = tf.layers.conv2d(inputs=X, filters=16, kernel_size=[8,8], strides=[4,4], padding='same', activation=tf.nn.relu)
+			conv2 = tf.layers.conv2d(inputs=conv1, filters=32, kernel_size=[4,4], strides=[2,2], padding='same', activation=tf.nn.relu)
+			conv3 = tf.layers.conv2d(inputs=conv2, filters=32, kernel_size=[3,3], strides=[1,1], padding='same', activation=tf.nn.relu)
+			flatten = tf.contrib.layers.flatten(conv3)
+			fc1 = tf.layers.dense(inputs=flatten, units=256, activation=tf.nn.relu)
 			fc2 = tf.layers.dense(inputs=fc1, units=self.action_num)
 		return fc2
 	
@@ -134,9 +141,9 @@ class DQN_agent:
 		
 		if rand > self.epsilon:
 			env_history = self.history.get()
-			env_history = tf.reshape(env_history, [1]+self.input_shape)
+			env_history = np.reshape(env_history, [1]+list(self.input_shape))
 			Q_values = self.sess.run(self.Q_network, feed_dict={self.X : env_history})
-			action = tf.argmax(Q_values)
+			action = np.argmax(Q_values)
 		else:
 			action = np.random.randint(low=0, high=self.action_num)
 		self.num_action_taken += 1
@@ -153,20 +160,29 @@ class DQN_agent:
 		self.replay_memory.append(old_state, action, reward, terminal)
 	
 	def train(self):
-		# update target net every __ interval
-		if (self.num_action_taken % self.target_update_interval == 0):
-			self.sess.run(update_target_net())
-		
-		if (self.num_action_taken % self.train_interval) == 0:
-			pre_states, actions, post_states, rewards, terminals = self.replay_memory.minibatch(self.minibatch_size)
-			Q_target = self.sess.run(rewards + self.gamma * tf.reduce_max(self.target_network, axis=0) * np.invert(terminals),
-									feed_dict={self.X : post_states}
-			# actions is one-hot encoding
-			actions = tf.one_hot(actions, self.num_action_taken)
-			Q_act = tf.reduce_sum(self.Q_Network * actions, axis=0)
-			loss = loss_function(Q_target, Q_act)
-			train_step = self.optimizer.minimize(loss)
-			sess.run(train_step)
+		if self.num_action_taken >= self.train_after:
+			# update target net every __ interval
+			if (self.num_action_taken % self.target_update_interval == 0):
+				self.sess.run(self.update_target_net())
+			
+			if (self.num_action_taken % self.train_interval) == 0:
+				pre_states, actions, post_states, rewards, terminals = self.replay_memory.minibatch(self.minibatch_size)
+				
+				# run through target network
+				target_output = self.sess.run(self.target_network, feed_dict={self.X : post_states})
+				Q_target = rewards + self.gamma * np.max(target_output, axis=1) * np.invert(terminals.astype(np.int))
+				
+				# actions is one-hot encoding
+				actions = tf.one_hot(actions, self.action_num)
+				Q_act = tf.reduce_sum(self.Q_network * actions, axis=1)
+				loss = loss_function(Q_target, Q_act)
+				train_step = self.optimizer.minimize(loss)
+				
+				if self.training is False:
+					self.sess.run(tf.global_variables_initializer())
+					self.training = True
+				
+				sess.run(train_step, feed_dict={self.X : pre_states})
 
 def transform_input(responses):
 	# return a numpy array representation of image
@@ -196,27 +212,49 @@ def interpret_action(action):
         quad_offset = (0, 0, -scaling_factor)
     return quad_offset
 	
-def compute_reward(drone_state, dest):
-	pass
+def compute_reward(destination, quad_state, quad_vel, collision_info):
+	initial_pos = np.array((0, 0, -1.5))
+	destination = np.array(destination)
+	thresh_dist = 7
+	beta = 0.5
+	quad_pos = np.array(list((quad_state.x_val, quad_state.y_val, quad_state.z_val)))
+	
+	if collision_info.has_collided:
+		reward = -100
+	else:
+		initial_dist = np.linalg.norm(destination-initial_pos)
+		dist = np.linalg.norm(quad_pos - destination)
+		if dist > initial_dist + thresh_dist:
+			reward = -10
+		else:
+			reward_dist = math.exp(-beta * dist)
+			reward_speed = np.linalg.norm([quad_vel.x_val, quad_vel.y_val, quad_vel.z_val]) - 0.5
+			reward = reward_dist + reward_speed
+	
+	return reward
 	
 def is_terminal(reward):
-	pass
+	return reward <= -10
 	
 if __name__ == "__main__":
+	input_shape = (4, 84, 84)
+	action_num = 7
+	epoch, max_epoch = 0, 100
+	destination = (32, 38, -4)
+	
 	# connect to the AirSim simulator 
 	client = MultirotorClient()
 	client.confirmConnection()
 	client.enableApiControl(True)
 	client.armDisarm(True)
 	
-	client.takeoff()
+	client.moveToPosition(0,0,-5,5)
+	time.sleep(0.5)
 	
-	with tf.device("/gpu:0"):
-		input_shape = (4, 84, 84)
-		action_num = 7
-		epoch, max_epoch = 0, 100
+	with tf.device("/cpu:0"):
 		sess = tf.Session()
 		agent = DQN_agent(input_shape, action_num, sess)
+		sess.run(tf.global_variables_initializer())
 		
 		responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
 		current_state = transform_input(responses)
@@ -231,15 +269,19 @@ if __name__ == "__main__":
 			quad_state = client.getPosition()
 			quad_vel = client.getVelocity()
 			collision_info = client.getCollisionInfo()
-			reward = compute_reward(quad_state, quad_vel, collision_info)
+			reward = compute_reward(destination, quad_state, quad_vel, collision_info)
 			terminal = is_terminal(reward)
 			
 			agent.observe(current_state, action, reward, terminal)
 			agent.train()
 			
 			if terminal:
+				print("epoch%d finished" % (epoch))
 				client.reset()
-				client.takeoff()
+				client.enableApiControl(True)
+				client.armDisarm(True)
+				client.moveToPosition(0,0,-5,5)
+				time.sleep(0.5)
 				epoch += 1
 				
 			responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
