@@ -3,6 +3,7 @@ from PIL import Image
 
 import numpy as np
 import tensorflow as tf
+import os
 
 class ReplayMemory:
 	# memory for experience replay
@@ -107,10 +108,21 @@ class DQN_agent:
 		self.num_action_taken = 0
 		self.training = False
 		
-		self.X = tf.placeholder(tf.float32, [None] + list(input_shape))
-		self.Q_network = self.build_network("Q_network", self.X)
-		self.target_network = self.build_network("target_network", self.X)
+		self.X_Q = tf.placeholder(tf.float32, [None] + list(input_shape))
+		self.X_t = tf.placeholder(tf.float32, [None] + list(input_shape))
+		self.Q_network = self.build_network("Q_network", self.X_Q)
+		self.target_network = self.build_network("target_network", self.X_t)
 		self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+		
+		with tf.variable_scope("optimizer"):
+			self.actions = tf.placeholder(tf.int32, [None], name="actions")
+			self.rewards = tf.placeholder(tf.float32, [None], name="rewards")
+			self.terminals = tf.placeholder(tf.float32, [None], name="terminals")
+			actions_one_hot = tf.one_hot(self.actions, self.action_num)
+			pred_Q = tf.reduce_sum(self.Q_network * actions_one_hot, axis=1)
+			Q_target = self.rewards + self.gamma * tf.reduce_max(self.target_network, axis=1) * (1-self.terminals)
+			self.loss = loss_function(Q_target, pred_Q)
+			self.train_step = self.optimizer.minimize(self.loss)
 		
 	def build_network(self, scope_name, X):
 		with tf.variable_scope(scope_name):
@@ -142,7 +154,7 @@ class DQN_agent:
 		if rand > self.epsilon:
 			env_history = self.history.get()
 			env_history = np.reshape(env_history, [1]+list(self.input_shape))
-			Q_values = self.sess.run(self.Q_network, feed_dict={self.X : env_history})
+			Q_values = self.sess.run(self.Q_network, feed_dict={self.X_Q : env_history})
 			action = np.argmax(Q_values)
 		else:
 			action = np.random.randint(low=0, high=self.action_num)
@@ -160,6 +172,8 @@ class DQN_agent:
 		self.replay_memory.append(old_state, action, reward, terminal)
 	
 	def train(self):
+		# train the neural network after a few number of actions
+		# so that there are enough training samples in replay memory
 		if self.num_action_taken >= self.train_after:
 			# update target net every __ interval
 			if (self.num_action_taken % self.target_update_interval == 0):
@@ -168,22 +182,23 @@ class DQN_agent:
 			if (self.num_action_taken % self.train_interval) == 0:
 				pre_states, actions, post_states, rewards, terminals = self.replay_memory.minibatch(self.minibatch_size)
 				
-				# run through target network
-				target_output = self.sess.run(self.target_network, feed_dict={self.X : post_states})
-				Q_target = rewards + self.gamma * np.max(target_output, axis=1) * np.invert(terminals.astype(np.int))
-				
-				# actions is one-hot encoding
-				actions = tf.one_hot(actions, self.action_num)
-				Q_act = tf.reduce_sum(self.Q_network * actions, axis=1)
-				loss = loss_function(Q_target, Q_act)
-				train_step = self.optimizer.minimize(loss)
-				
-				if self.training is False:
-					self.sess.run(tf.global_variables_initializer())
-					self.training = True
-				
-				sess.run(train_step, feed_dict={self.X : pre_states})
+				sess.run(self.train_step, feed_dict={self.X_Q:pre_states, 
+													 self.X_t:post_states, 
+													 self.actions:actions, 
+													 self.rewards:rewards, 
+													 self.terminals:terminals})
 
+	def save_model(self, saver, model_path):
+		# save model for future use
+		saver.save(self.sess, model_path)
+		print("Model saved in %s!" % model_path)
+		
+	def restore_model(self, saver, model_path):
+		# restore previous model
+		saver.restore(self.sess, model_path)
+		print("Model restored!")
+		
+				
 def transform_input(responses):
 	# return a numpy array representation of image
     img1d = np.array(responses[0].image_data_float, dtype=np.float)
@@ -239,7 +254,7 @@ def is_terminal(reward):
 if __name__ == "__main__":
 	input_shape = (4, 84, 84)
 	action_num = 7
-	epoch, max_epoch = 0, 100
+	epoch, max_epoch = 0, 10
 	destination = (32, 38, -4)
 	
 	# connect to the AirSim simulator 
@@ -252,37 +267,51 @@ if __name__ == "__main__":
 	time.sleep(0.5)
 	
 	with tf.device("/cpu:0"):
-		sess = tf.Session()
-		agent = DQN_agent(input_shape, action_num, sess)
-		sess.run(tf.global_variables_initializer())
+	
+		with tf.Session() as sess:
 		
-		responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
-		current_state = transform_input(responses)
-		
-		while epoch < max_epoch:
-			action = agent.act(current_state)
-			quad_offset = interpret_action(action)
-			quad_vel = client.getVelocity()
-			client.moveByVelocity(quad_vel.x_val+quad_offset[0], quad_vel.y_val+quad_offset[1], quad_vel.z_val+quad_offset[2], 5)
-			time.sleep(0.5)
+			agent = DQN_agent(input_shape, action_num, sess)
+			saver = tf.train.Saver()
 			
-			quad_state = client.getPosition()
-			quad_vel = client.getVelocity()
-			collision_info = client.getCollisionInfo()
-			reward = compute_reward(destination, quad_state, quad_vel, collision_info)
-			terminal = is_terminal(reward)
+			# check whether there exists pre-trained model
+			# if yes, keep on training
+			dirname = os.path.dirname(os.path.abspath(__file__))
+			model_path = os.path.join(dirname, "dqn.ckpt")
+			if os.path.exists(os.path.join(dirname, "checkpoint")):
+				agent.restore_model(saver, model_path)
+				agent.training = True
+			else:
+				sess.run(tf.global_variables_initializer())
 			
-			agent.observe(current_state, action, reward, terminal)
-			agent.train()
-			
-			if terminal:
-				print("epoch%d finished" % (epoch))
-				client.reset()
-				client.enableApiControl(True)
-				client.armDisarm(True)
-				client.moveToPosition(0,0,-5,5)
-				time.sleep(0.5)
-				epoch += 1
-				
 			responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
 			current_state = transform_input(responses)
+			
+			while epoch < max_epoch:
+				action = agent.act(current_state)
+				quad_offset = interpret_action(action)
+				quad_vel = client.getVelocity()
+				client.moveByVelocity(quad_vel.x_val+quad_offset[0], quad_vel.y_val+quad_offset[1], quad_vel.z_val+quad_offset[2], 5)
+				time.sleep(0.5)
+				
+				quad_state = client.getPosition()
+				quad_vel = client.getVelocity()
+				collision_info = client.getCollisionInfo()
+				reward = compute_reward(destination, quad_state, quad_vel, collision_info)
+				terminal = is_terminal(reward)
+				
+				agent.observe(current_state, action, reward, terminal)
+				agent.train()
+				
+				if terminal:
+					print("epoch %d finished" % (epoch))
+					client.reset()
+					client.enableApiControl(True)
+					client.armDisarm(True)
+					client.moveToPosition(0,0,-5,5)
+					time.sleep(0.5)
+					epoch += 1
+					
+				responses = client.simGetImages([ImageRequest(3, AirSimImageType.DepthPerspective, True, False)])
+				current_state = transform_input(responses)
+			
+			agent.save_model(saver, model_path)
