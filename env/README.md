@@ -1,8 +1,7 @@
 gymlike game environment
 =======
 
-Introduction
---------
+
 gym like test framework.\
 currently only have one game: drone_env_gridworld\
 which moves from A to B through only positions and velocity
@@ -21,11 +20,11 @@ action = 5 quad_offset = (0, -scaling_factor, 0)\
 action = 6 quad_offset = (0, 0, -scaling_factor)\
 
 env.reset():\
-	reset the environment, and move to the start position\
-	it returns the state
+    reset the environment, and move to the start position\
+    it returns the state
 
 env.step(action)\
-	returns state_,reward,done,info\
+    returns state_,reward,done,info\
 
 env.render(extra1,extra2)\
-	print some information,with some extra strings\
+    print some information,with some extra strings\
