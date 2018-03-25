@@ -65,9 +65,10 @@ class DQNClass:
         
         if self.settings["model"] == None:
             model = keras.models.Sequential()
-            model.add(keras.layers.Dense(12, activation='relu', input_dim=self.n_features))
-            model.add(keras.layers.Dense(12, activation='relu'))
-            model.add(keras.layers.Dense(12, activation='relu'))
+            model.add(keras.layers.Dense(100, activation='relu', input_dim=self.n_features))
+            model.add(keras.layers.Dense(100, activation='relu'))
+            model.add(keras.layers.Dense(100, activation='relu'))
+            model.add(keras.layers.Dense(100, activation='relu'))
             model.add(keras.layers.Dense(self.n_actions))
             model.compile(keras.optimizers.Adam(lr=self.lr), 'mse')
             self.model = model
@@ -96,13 +97,16 @@ class DQNClass:
     
     def learn(self,times = 1):
         res = ''
+        
+        if self.training_counter % (self.replace_target_iter) == 0:
+            #self.target_model = keras.models.clone_model(self.model)
+            self.target_model.set_weights(self.model.get_weights())
+            res += 'target net replaced'
+            print(res)
+        
+        self.training_counter+=1
+                
         for i in range(times):
-            if self.training_counter % (self.replace_target_iter//times+1) == 0:
-                #self.target_model = keras.models.clone_model(self.model)
-                self.target_model.set_weights(self.model.get_weights())
-                res += 'target net replaced'
-                #print(res)
-            self.training_counter+=1
             
             tdata = self.dataset.next_batch(self.batch_size*times)
             
