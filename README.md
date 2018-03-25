@@ -15,13 +15,13 @@ Simply, it can be separated into two problems. The first one is search for a pat
 Questions
 ---------
 
-###Questions in 3D path finding
+### Questions in 3D path finding
 
 How do we define the environment or to say what features are required?
 
 How to avoid collision through the features provided?
 
-###Questions in Object Detection and route plan
+### Questions in Object Detection and route plan
 
 How to mark an object in a sense image?
 
@@ -38,23 +38,23 @@ All our work will based on Microsoft AirSim simulator.
 
 If it's possible, we wold try it in the real world through a real drone at last.
 
-###3D path finding
+### 3D path finding
 
 We decide to use deep reinforcement learning algorithms and some basic decision trees to solve this problem. Simply we plan to divided the whole project into three steps:
 
-####1. 3D gridworld environment
+#### 1. 3D gridworld environment
 
 We can consider the whole environment as a 3D gridworld and each time the drone is able to move through one grid. In this environment, only position and velocity of the drone are provided. Here we want to check the availability of deep reinforcement learning algorithms.
 
-####2. height control environment
+#### 2. height control environment
 
 In the second step, we apply image features from the drone cameras in order to avoid collision. The action in this step is the z axis velocity at a time. It should be continuous. Here we want to test if we can solve the problem with image features.
 
-####3. action control environment
+#### 3. action control environment
 
 In the third step, actions on all axes are open for the agent, we want to design a policy which can move from A to B.
 
-###Object Detection
+### Object Detection
 
 We will create some new objects, like some Hello Kitty, in the unreal world. Then design some algorithms for detecting and route planning in a certain area.
 
