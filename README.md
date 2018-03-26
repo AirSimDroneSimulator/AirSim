@@ -54,7 +54,7 @@ In the third step, actions on all axes are open for the agent, we want to design
 
 ### Object Detection
 
-We will create some new objects, like some Hello Kitty, in the unreal world. Then design some algorithms for detecting and route planning in a certain area.
+We will create some new objects, cats' images for example, in the unreal world. Then design some algorithms for detecting and route planning in a certain area to locate the position of those objects.
 
 
 
