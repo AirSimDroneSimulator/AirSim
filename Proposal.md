@@ -23,9 +23,9 @@ How to avoid collision through the features provided?
 
 ### Questions in Object Detection and route plan
 
-How to mark an object in a sense image?
+How well objection detection method performs in finding sepcific object in simulation environment? 
 
-How to plan an efficient route for a certain area?
+Is objection detection method perform better than image data classification method?
 
 Methods and Plans
 -------
