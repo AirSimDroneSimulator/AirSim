@@ -1,31 +1,55 @@
-﻿
-Object Detector through an UAV in unreal Airsim environment
+﻿Object Detector through an UAV in unreal Airsim environment
 =====
-Hypothesis
+Introduction
 ------
-
 By definition:
 
 >An unmanned aerial vehicle (UAV), commonly known as a drone, is an aircraft without a human pilot aboard. 
 
 Nowadays, UAV can be very small and contribute in many circumstances. In this project, we consider about one of them that using a drone with cameras to search for specific object in unreal world. 
+Simply, it can be separated into two problems. The first one is search for a path in 3D environment to avoid collision. Another is searching for a specific object through the drone cameras and planning for its route in searching area. Here we want to use popular methods: deep neural network in this project.
 
-Simply, it can be separated into two problems. The first one is search for a path in 3D environment to avoid collision. Another is searching for a specific object through the drone cameras and planning for its route in searching area.
+Hypothesis
+-----
+
+### 3D path finding:
+
+Deep reinforcement learning algorithms can be applied in this 3D path finding problems and provide a better performance than naive approaches when environment changes.
+
+Explaination
+------
+
+#### Deep reinforcement learning algorithms: 
+
+Traditional RL algorithms with the power of deep neural networks.
+
+#### 3D path finding problems: 
+
+Providing some features of the states in Airsim (position, velocity or images from cameras on drone) as input, finding a path from a specified start position to a certain destination without collision. 
+
+#### Environment changes:
+
+Only changes the start point and the destination.
+
+#### Better performance:
+
+Performance means success rate, time costs and especially the extra workload (how much the human knowledge involved).
+
 
 Questions
 ---------
 
 ### Questions in 3D path finding
 
-How do we define the environment or to say what features are required?
+How do we choose the features required?
 
 How to avoid collision through the features provided?
 
 ### Questions in Object Detection and route plan
 
-How well objection detection method performs in finding sepcific object in simulation environment? 
+How to mark an object in a sense image?
 
-Is objection detection method perform better than image data classification method?
+How to plan an efficient route for a certain area?
 
 Methods and Plans
 -------
@@ -33,6 +57,8 @@ Methods and Plans
 All our work will based on Microsoft AirSim simulator.
 
 >[AirSim](https://github.com/Microsoft/AirSim) is a simulator for drones, cars and more built on Unreal Engine. It is open-source, cross platform and supports hardware-in-loop with popular flight controllers such as PX4 for physically and visually realistic simulations. It is developed as an Unreal plugin that can simply be dropped in to any Unreal environment you want.
+
+>Our goal is to develop AirSim as a platform for AI research to experiment with deep learning, computer vision and reinforcement learning algorithms for autonomous vehicles. For this purpose, AirSim also exposes APIs to retrieve data and control vehicles in a platform independent way.
 
 If it's possible, we wold try it in the real world through a real drone at last.
 
@@ -54,7 +80,7 @@ In the third step, actions on all axes are open for the agent, we want to design
 
 ### Object Detection
 
-We will create some new objects, cats' images for example, in the unreal world. Then design some algorithms for detecting and route planning in a certain area to locate the position of those objects.
+We will create some new objects, like some Hello Kitty, in the unreal world. Then design some algorithms for detecting and route planning in a certain area.
 
 
 
