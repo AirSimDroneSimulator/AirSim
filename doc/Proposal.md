@@ -16,6 +16,10 @@ Hypothesis
 
 Deep reinforcement learning algorithms can be applied in this 3D path finding problems and provide a better performance than naive approaches when environment changes.
 
+### Object Detection:
+
+YOLO Real-Time Object Detection method can performance better than naive image classification in terms of locating an specific object in 3D environment while flying.
+
 Explaination
 ------
 
@@ -35,6 +39,10 @@ Only changes the start point and the destination.
 
 Performance means success rate, time costs and especially the extra workload (how much the human knowledge involved).
 
+### Naive image classification
+
+Using CNN models achieve image classification to tell whether the object is in the picture, and locate the object through feature tracking. 
+
 
 Questions
 ---------
@@ -47,9 +55,9 @@ How to avoid collision through the features provided?
 
 ### Questions in Object Detection and route plan
 
-How to mark an object in a sense image?
+How is the normal static image object detection different from real-time object detection?
 
-How to plan an efficient route for a certain area?
+How is the size of the object affects the accuracy in object detection?
 
 Methods and Plans
 -------
@@ -78,9 +86,6 @@ In the second step, we apply image features from the drone cameras in order to a
 
 In the third step, actions on all axes are open for the agent, we want to design a policy which can move from A to B.
 
-### Object Detection
-
-We will create some new objects, like some Hello Kitty, in the unreal world. Then design some algorithms for detecting and route planning in a certain area.
 
 
 
