@@ -1,4 +1,4 @@
-s﻿Experiment Design
+﻿Experiment Design
 ===============
 
 Title
@@ -37,4 +37,4 @@ Constants
 
 1. Using Neighborhood Airsim drone Environment.
 
-2. Images from drone's camera.
+2. Images captured by drone's camera.
