@@ -1,9 +1,10 @@
 import AirSimClient
 import time
+import copy
 import numpy as np
 from PIL import Image
 
-goal_threshold = 5
+goal_threshold = 3
 np.set_printoptions(precision=3, suppress=True)
 
 class drone_env:
@@ -169,7 +170,7 @@ class drone_env_heightcontrol(drone_env):
         
         if self.isDone():
             done = True
-            reward = 10
+            reward = 30
             info = "success"
         if self.client.getCollisionInfo().has_collided:
             reward = -50
@@ -179,11 +180,17 @@ class drone_env_heightcontrol(drone_env):
             done = True
             info = "too high"
             reward = -50
+        if np.linalg.norm(pos[:2]) >= np.linalg.norm(self.aim[:2])+self.threshold:
+            done = True
+            info = "out of range"
+            reward = -50
             
         self.state = state_
         reward /= 50
+        norm_state = copy.deepcopy(state_)
+        norm_state[1] = norm_state[1]/10
         
-        return state_,reward,done,info
+        return norm_state,reward,done,info
         
     def isDone(self):
         pos = v2t(self.client.getPosition())
@@ -196,8 +203,8 @@ class drone_env_heightcontrol(drone_env):
         pos = state[1][:3]
         pos_ = state_[1][:3]
         reward = distance(pos, self.aim) - distance(pos_, self.aim)
-        penalty = -abs(pos[2]+10) * 0.25
-        reward += penalty
+        penalty = abs(pos[2]+10) * 0.2
+        reward -= penalty
         return reward
         
     def getImg(self):

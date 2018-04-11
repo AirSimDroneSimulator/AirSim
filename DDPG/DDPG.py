@@ -76,5 +76,6 @@ class DDPG_agent:
 			saver.restore(self.sess, ckpt.model_checkpoint_path)
 			self.action_noise = self.action_noise.load(dir)
 			self.replay_memory = self.replay_memory.load(dir)
+			self.train_after = 0
 			return True
 		return False
