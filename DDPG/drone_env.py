@@ -188,7 +188,7 @@ class drone_env_heightcontrol(drone_env):
         self.state = state_
         reward /= 50
         norm_state = copy.deepcopy(state_)
-        norm_state[1] = norm_state[1]/10
+        norm_state[1] = norm_state[1]/100
         
         return norm_state,reward,done,info
         

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 class Actor:
-	def __init__(self, sess, action_bound, action_dim, state_shape, lr=0.0001, tau=0.01):
+	def __init__(self, sess, action_bound, action_dim, state_shape, lr=1e-4, tau=0.001):
 		self.sess = sess
 		self.action_bound = action_bound
 		self.action_dim = action_dim
@@ -31,18 +31,18 @@ class Actor:
 		
 	def _build_network(self, X, image, scope):
 		with tf.variable_scope(scope):
-			init_w = tf.truncated_normal_initializer(0., 0.003)
+			init_w1 = tf.truncated_normal_initializer(0., 3e-4)
+			init_w2 = tf.random_uniform_initializer(-0.05, 0.05)
 
-			conv1 = tf.layers.conv2d(image, 16, [3,3], strides=[4,4], padding="same", kernel_initializer=init_w, activation=tf.nn.relu)
-			conv2 = tf.layers.conv2d(conv1, 32, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w, activation=tf.nn.relu)
-			conv3 = tf.layers.conv2d(conv2, 64, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w, activation=tf.nn.relu)
-			conv4 = tf.layers.conv2d(conv3, 1, [4,4], kernel_initializer=init_w, activation=tf.nn.relu)
-			flatten = tf.layers.flatten(conv3) # shape(None, 8)
+			conv1 = tf.layers.conv2d(image, 32, [3,3], strides=[4,4], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			conv2 = tf.layers.conv2d(conv1, 32, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			conv3 = tf.layers.conv2d(conv2, 32, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			flatten = tf.layers.flatten(conv3) # shape(None, 4*4*32)
 			concat = tf.concat([flatten, X], 1)
 
-			fc1 = tf.layers.dense(inputs=concat, units=64, activation=tf.nn.relu, kernel_initializer=init_w)
-			fc2 = tf.layers.dense(inputs=fc1, units=64, activation=tf.nn.relu, kernel_initializer=init_w)
-			action_normal = tf.layers.dense(inputs=fc2, units=self.action_dim, activation=tf.nn.tanh, kernel_initializer=init_w)
+			fc1 = tf.layers.dense(inputs=concat, units=200, activation=tf.nn.relu, kernel_initializer=init_w2)
+			fc2 = tf.layers.dense(inputs=fc1, units=200, activation=tf.nn.relu, kernel_initializer=init_w2)
+			action_normal = tf.layers.dense(inputs=fc2, units=self.action_dim, activation=tf.nn.tanh, kernel_initializer=init_w2)
 			action = tf.multiply(action_normal, self.action_bound)
 		return action
 		

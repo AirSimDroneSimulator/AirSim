@@ -8,9 +8,9 @@ from ReplayMemory import ReplayMemory
 
 class DDPG_agent:
 	def __init__(self, sess, state_shape, action_bound, action_dim,
-				 memory_size=10000, minibatch_size=32, gamma=0.9, tau=0.001, train_after=50):
+				 memory_size=20000, minibatch_size=32, gamma=0.99, tau=0.001, train_after=200):
 		self.actor = Actor(sess, action_bound, action_dim, state_shape, tau=tau)
-		self.critic = Critic(sess, state_shape, action_dim, tau=tau)
+		self.critic = Critic(sess, state_shape, action_dim, minibatch_size, tau=tau)
 		self.replay_memory = ReplayMemory(memory_size)
 		self.sess = sess
 		self.minibatch_size = minibatch_size

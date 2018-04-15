@@ -4,7 +4,6 @@ import os
 from DDPG import DDPG_agent
 from drone_env import drone_env_heightcontrol
 
-EPISODE = 500
 PATH = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(PATH, "data")
 tf.set_random_seed(22)
@@ -14,9 +13,10 @@ def main():
 	with tf.device("/gpu:0"):
 
 		config = tf.ConfigProto(allow_soft_placement=True)
-		config.gpu_options.per_process_gpu_memory_fraction = 0.7
+		config.gpu_options.per_process_gpu_memory_fraction = 0.6
 		with tf.Session(config=config) as sess:
 
+			globe_episode = tf.Variable(0, dtype=tf.int32, trainable=False, name='globe_episode')
 			env = drone_env_heightcontrol()
 			state = env.reset()
 			state_shape = 9
@@ -32,7 +32,7 @@ def main():
 
 			e, success, episode_reward = 0, 0, 0
 
-			while e < EPISODE:
+			while True:
 
 				action = agent.act(state)
 				next_state, reward, terminal, info = env.step(action)
@@ -50,7 +50,9 @@ def main():
 					print("episode {} finish, reward: {}, total success: {}".format(e, episode_reward, success))
 					episode_reward = 0
 					e += 1
+					total_episode = sess.run(globe_episode.assign_add(1))
 					if e % 10 == 0:
+						print("total training episode: {}".format(total_episode))
 						agent.save(saver,DIR)
 
 if __name__ == "__main__":
