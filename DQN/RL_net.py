@@ -1,6 +1,6 @@
 import numpy as np
 import keras
-from RL_dataset import Dataset
+from DQN.RL_dataset import Dataset
 
 def pack_example(x):
 	return x
@@ -77,10 +77,10 @@ class DQNClass:
         self.target_model = keras.models.clone_model(self.model)
         
    
-    def choose_action(self,observation):
+    def choose_action(self,observation,test = False):
         observation = observation[np.newaxis, :]
 
-        if np.random.uniform() < self.epsilon:
+        if np.random.uniform() < self.epsilon or test:
             actions_value = self.model.predict(observation)
             action = np.argmax(actions_value)
             #print (self.epsilon,'arg')

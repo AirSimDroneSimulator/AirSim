@@ -38,15 +38,17 @@ class Critic:
 			init_w1 = tf.truncated_normal_initializer(0., 3e-4)
 			init_w2 = tf.random_uniform_initializer(-0.05, 0.05)
 
-			conv1 = tf.layers.conv2d(image, 32, [3,3], strides=[4,4], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
-			conv2 = tf.layers.conv2d(conv1, 32, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
-			conv3 = tf.layers.conv2d(conv2, 32, [3,3], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
-			flatten = tf.layers.flatten(conv3) # shape(None, 4*4*32)
+			conv1 = tf.layers.conv2d(image, 32, [5,5], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			conv2 = tf.layers.conv2d(conv1, 32, [5,5], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			conv3 = tf.layers.conv2d(conv2, 32, [5,5], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			conv4 = tf.layers.conv2d(conv3, 32, [5,5], strides=[2,2], padding="same", kernel_initializer=init_w1, activation=tf.nn.relu)
+			flatten = tf.layers.flatten(conv4) # shape(None, 4*4*32)
 			concat = tf.concat([flatten, action, X], 1)
 
 			fc1 = tf.layers.dense(inputs=concat, units=200, activation=tf.nn.relu, kernel_initializer=init_w2)
 			fc2 = tf.layers.dense(inputs=fc1, units=200, activation=tf.nn.relu, kernel_initializer=init_w2)
-			Q = tf.layers.dense(inputs=fc2, units=1, kernel_initializer=init_w2)
+			fc3 = tf.layers.dense(inputs=fc2, units=200, activation=tf.nn.relu, kernel_initializer=init_w2)
+			Q = tf.layers.dense(inputs=fc3, units=1, kernel_initializer=init_w2)
 		return Q
 		
 	def target_net_eval(self, states, actions):
