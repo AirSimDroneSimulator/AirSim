@@ -1,4 +1,0 @@
-model_checkpoint_path: "model"
-all_model_checkpoint_paths: "..\\DDPG_4_29_s1\\model"
-all_model_checkpoint_paths: "..\\DDPG_4_29_s2\\model"
-all_model_checkpoint_paths: "model"
