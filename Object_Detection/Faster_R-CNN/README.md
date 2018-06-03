@@ -8,6 +8,7 @@ How to use
 2. Put the folder "AirSim_sample_input" in py-faster-rcnn/data. Put "AirSim_COCO.py" in py-faster-rcnn/tools. Creat a new floder named "output" in py-faster-rcnn/data.
 3. Replace the PASCAL VOC model with COCO model. See "How to use COCO dataset model" in this file.
 4. python AirSim_COCO.py (under python version 2.7)
+5. The results are stored in py-faster-rcnn/data/output
 
 How to use COCO dataset model
 --------- 
