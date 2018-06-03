@@ -9,7 +9,7 @@ from DDPG.ReplayMemory import ReplayMemory
 
 class DDPG_agent:
     def __init__(self, sess, state_shape, action_bound, action_dim,
-                 memory_size=100000, minibatch_size=32, gamma=0.99, tau=0.001, train_after=200):
+                 memory_size=100000, minibatch_size=128, gamma=0.99, tau=0.001, train_after=200):
         self.actor = Actor(sess, action_bound, action_dim, state_shape,lr = 0.0001, tau=tau)
         self.critic = Critic(sess, state_shape, action_dim, minibatch_size,lr = 0.001, tau=tau)
         self.state_shape = state_shape
@@ -45,7 +45,7 @@ class DDPG_agent:
     def train(self,times = 1):
         if self.num_action_taken >= self.train_after:
             for i in range(times):
-                print ("training:{} / {}".format(i,times),end = '\r')
+                #print ("training:{} / {}".format(i,times),end = '\r')
 
                 # 1 sample random minibatch from replay memory
                 states, actions, rewards, post_states, terminals = \

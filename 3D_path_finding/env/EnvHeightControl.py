@@ -52,7 +52,7 @@ class EnvHeightControl(EnvBase):
 
         info = None
         done = False
-        reward = self.rewardf(self.state, state_)
+        reward = self.rewardf(self.state, state_,mind)
 
         if self.isDone():
             if self.rand:
@@ -83,7 +83,7 @@ class EnvHeightControl(EnvBase):
         return norm_state, reward, done, info
 
     def collisionCheck(self,mind):
-        if mind < 0.5:
+        if mind < 0.2:
             return True
         return False
 
@@ -92,28 +92,42 @@ class EnvHeightControl(EnvBase):
         taim[2] = self.getPos()[2]
         return self.arrive_aim(taim,self.scaling_factor)
 
-    def rewardf(self, state, state_):
+    def rewardf(self, state, state_,mind):
         pos = state[1][0]
         pos_ = state_[1][0]
         reward = - abs(pos_) + 5
         reward = reward * 2
+
+        reward2 = min(mind,2)
+        reward2 = reward2
+        reward2 = reward2 * 10
+        reward += reward2
 
         return reward
 
     def getImg(self):
 
         responses = self.client.simGetImages(
-            [AirSimClient.ImageRequest(0, AirSimClient.AirSimImageType.DepthPerspective, True, False)])
-        img1d = np.array(responses[0].image_data_float, dtype=np.float)
-        img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
-        mind = img2d.min()
-        image = Image.fromarray(img2d)
-        im_final = np.array(image.resize((64, 64)).convert('L'), dtype=np.float) / 255
-        im_final.resize((64, 64, 1))
-        if IMAGE_VIEW:
-            cv2.imshow("view", im_final)
-            key = cv2.waitKey(1) & 0xFF;
-        return im_final, mind
+            [AirSimClient.ImageRequest(0, AirSimClient.AirSimImageType.DepthPerspective, True, False),
+             AirSimClient.ImageRequest(3, AirSimClient.AirSimImageType.DepthPerspective, True, False),
+             AirSimClient.ImageRequest(4, AirSimClient.AirSimImageType.DepthPerspective, True, False)])
+        im_res = []
+        mind = 100
+        for i in range(len(responses)):
+            response = responses[i]
+            img1d = np.array(response.image_data_float, dtype=np.float)
+            img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
+            mind = min(img2d.min(),mind)
+            image = Image.fromarray(img2d)
+            im_final = np.array(image.resize((64, 64)).convert('L'), dtype=np.float) / 255
+            im_final.resize((64, 64, 1))
+            if IMAGE_VIEW:
+                cv2.imshow("view"+str(i), im_final)
+                key = cv2.waitKey(1) & 0xFF;
+            im_res.append(im_final)
+        temp = [m for m in im_res]
+        res = np.concatenate(temp,axis = -1)
+        return res, mind
 
 if __name__ == "__main__":
     env = EnvHeightControl()
