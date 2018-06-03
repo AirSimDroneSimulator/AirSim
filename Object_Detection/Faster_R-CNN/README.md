@@ -21,7 +21,7 @@ How to get test images
 -----------
 
 1. Clone and install the AirSim from https://github.com/Microsoft/AirSim as well as the AirSimNH environment.
-2. Put "captureImages.py" in AirSim/PythonClient.
+2. Put "captureImages.py" and "AirSimClient.py" in AirSim/PythonClient.
 3. Run AirSimNH.exe by run.bat to setup the environment.
 4. python captureImages.py (under python version 3.6)
 5. Enter the coordinate of destination. Then the UAV will fly to it and capture image in AirSim\PythonClient\AirSim_sample_input
