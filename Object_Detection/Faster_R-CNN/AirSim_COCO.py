@@ -176,4 +176,3 @@ if __name__ == '__main__':
         print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
         print 'Object Detection for data/AirSim_sample_input/{}'.format(im_name)
         demo(net, im_name)
-
